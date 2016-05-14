@@ -1,9 +1,9 @@
 #include <SPI.h>
 
-const int CS_PIN_ADXL = 6;
-const int CS_PIN_MCP2515 = 7;
-const int START_PIN_IN = 8;
-const int END_PIN_OUT = 9;
+const int CS_PIN_ADXL = 10;
+const int CS_PIN_MCP2515 = 9;
+const int START_PIN_IN = 7;
+const int END_PIN_OUT = 8;
 
 // CONTROL REGISTER
 const byte CONTROL_REGISTER_BFPCTRL = 0x0C;
@@ -90,10 +90,16 @@ const byte MESSAGE_SIZE_ADXL = 0x06;
 byte ReadBuf[6]; // Read buffer of size 6 bytes (2 bytes * 3 axes)
 byte retVal;
 
+const int ADXL = 1;
+const int MCP2515 = 2;
+const int	NO_DEVICE = 3;
+
+
 void setup()
 {
 	// Define I/Os
 	pinMode(CS_PIN_ADXL, OUTPUT);
+	pinMode(CS_PIN_MCP2515, OUTPUT); // Set as input to enable pull up resistor. It's neccessary because the ss line is defined at pin 10 + 9
 	pinMode(START_PIN_IN, INPUT);
 	pinMode(END_PIN_OUT, OUTPUT);
 
@@ -107,8 +113,12 @@ void setup()
 	SPI.begin();
 
 	// Configure ADXL and MCP2515
+	switchDevice(ADXL);
 	initAdxl();
-	initMcp2515();
+	switchDevice(MCP2515);
+	//initMcp2515();
+	delay(100);
+	switchDevice(NO_DEVICE);
 
 	// Give time to set up
 	delay(100);
@@ -116,14 +126,19 @@ void setup()
 
 void loop()
 {
-	if (digitalRead(START_PIN_IN) == 1)
-	{
+	//if (digitalRead(START_PIN_IN) == 1)
+	//{
 		readAccel(); // Read sensor data
-		sendToMcp2515(); // Send sensor data to mcp2515
-		digitalWrite(END_PIN_OUT, HIGH);
-		waitFor(START_PIN_IN, 0); // Wait until master reset the signal -> Handshake
-		digitalWrite(END_PIN_OUT, LOW);
-	}
+		//sendToMcp2515(); // Send sensor data to mcp2515
+		//digitalWrite(END_PIN_OUT, HIGH);
+		//waitFor(START_PIN_IN, 0); // Wait until master reset the signal -> Handshake
+		//digitalWrite(END_PIN_OUT, LOW);
+	//}
+		//for (int i = 0; i < 6; i++)
+		//{
+	Serial.println("ReadBuffer: " + ReadBuf[0]);
+		//}
+		delay(1000);
 }
 
 void initAdxl() {
@@ -132,6 +147,9 @@ void initAdxl() {
 }
 
 void initMcp2515() {
+
+	switchDevice(MCP2515);
+
 	// Reset chip to set in operation mode
 	mcp2515_execute_reset_command();
 
@@ -224,13 +242,22 @@ byte mcp2515_execute_read_command(byte registerToRead, int cs_pin)
 void readAccel() {
 	byte RegAddrBuf[] = { ACCEL_REG_X | ACCEL_SPI_RW_BIT | ACCEL_SPI_MB_BIT };
 
+	switchDevice(ADXL);
+
 	digitalWrite(CS_PIN_ADXL, LOW);
 	SPI.transfer(RegAddrBuf[0]);
-	for (int i = 0; i < 6; i++) ReadBuf[i] = SPI.transfer(0x00); // Write 0 value to get data
+	for (int i = 0; i < 6; i++) {
+		ReadBuf[i] = SPI.transfer(0x00); // Write 0 value to get data
+		Serial.print("spi data: ");
+		Serial.println(ReadBuf[i]);
+	}
 	digitalWrite(CS_PIN_ADXL, HIGH);
 }
 
 void sendToMcp2515() {
+
+	switchDevice(MCP2515);
+
 	// Set the message identifier to 10000000000 and extended identifier bit to 0
 	mcp2515_execute_write_command(REGISTER_TXB0SIDL, REGISTER_TXB0SIDL_VALUE, CS_PIN_MCP2515);
 
@@ -293,4 +320,26 @@ void writeSimpleCommandSpi(byte command, int cs_pin)
 	digitalWrite(cs_pin, LOW);
 	SPI.transfer(command);
 	digitalWrite(cs_pin, HIGH);
+}
+
+void switchDevice(int device)  {
+	switch (device)
+	{
+	case ADXL:
+		pinMode(CS_PIN_MCP2515, INPUT);
+		pinMode(CS_PIN_ADXL, OUTPUT);
+		digitalWrite(CS_PIN_ADXL, HIGH);
+		break;
+	case MCP2515:
+		pinMode(CS_PIN_ADXL, INPUT);
+		pinMode(CS_PIN_MCP2515, OUTPUT);
+		digitalWrite(CS_PIN_MCP2515, HIGH);
+		break;
+	case NO_DEVICE:
+		pinMode(CS_PIN_ADXL, INPUT);
+		pinMode(CS_PIN_MCP2515, INPUT);
+		break;
+	default:
+		break;
+	}
 }

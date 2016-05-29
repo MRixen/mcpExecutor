@@ -71,7 +71,7 @@ const byte CONTROL_REGISTER_RXB1CTRL_VALUE = 0x03;
 // Set values for bit timing
 // Fosc = 8Mhz
 // Tosc = 125ns
-const byte CONTROL_REGISTER_VALUE_CNF1 = 0x03; // Baud rate prescaler calculated with application (Fosc = 8Mhz and CANspeed = 125kHz)
+const byte CONTROL_REGISTER_VALUE_CNF1 = 0x01; // Baud rate prescaler calculated with application (Fosc = 8Mhz and CANspeed = 125kHz)
 const byte CONTROL_REGISTER_VALUE_CNF2 = 0x90; // BTLMODE = 1 (PHaseSegment 2 is configured with CNF 3) and PhaseSegment 1 = 8xTQ (7+1)
 const byte CONTROL_REGISTER_VALUE_CNF3 = 0x02; // Set PhaseSegment 2 = 6xTQ (5+1)
 
@@ -136,7 +136,7 @@ const int UNITS_PER_G = ACCEL_RES / ACCEL_DYN_RANGE_G;  /* Ratio of raw int valu
 const long MAX_WAIT_TIME = 5000;
 const int MAX_ERROR_COUNTER_MODESWITCH = 3;
 bool stopAllOperations = false;
-const bool debugMode = false;
+bool debugMode;
 
 union acc_x
 {
@@ -191,6 +191,8 @@ void setup()
 	// Configure ADXL and MCP2515
 	initAdxl();
 	initMcp2515();
+
+	debugMode = false;
 
 	// Give time to set up
 	delay(100);
